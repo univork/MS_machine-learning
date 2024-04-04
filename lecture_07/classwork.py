@@ -24,7 +24,7 @@ for i in df_students.iterrows():
     classes = get_random_subjects()
     all_classes.append(classes)
 
-df_selected_subjects = pd.DataFrame(all_classes, columns=["საგანი 1", "საგანი 2", "საგანი 3", "საგანი 4"])
+df_selected_subjects = pd.DataFrame(all_classes, columns=["საგანი 1", "საგანი 2", "საგანი 3", "საგანი 4", "საგანი 5", "საგანი 6"])
 
 df_full = pd.concat([df_students, df_selected_subjects], axis=1)
 df_full.to_excel("student_subjects.xlsx", index=False)
