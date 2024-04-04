@@ -11,7 +11,7 @@ def get_random_subjects():
     classes = []
     credits = 0
     for i in df_subjects.sample(frac=1).iterrows():
-        if (credits + i[1]['კრედიტები']) <= 20:
+        if (credits + i[1]['კრედიტები']) <= 30:
             credits += i[1]['კრედიტები']
             classes.append(i[1]['სასწავლო კომპონენტი'])
         if credits == 20:
