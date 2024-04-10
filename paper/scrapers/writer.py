@@ -5,7 +5,7 @@ import pandas as pd
 from scrapers.scraper import Scraper, DIRECTORY
 from scrapers.ss_scraper import SSScraper
 
-logging.basicConfig(filename="logs.log", filemode="a", level=logging.DEBUG)
+logging.basicConfig(filename="logs.log", filemode="a", level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
