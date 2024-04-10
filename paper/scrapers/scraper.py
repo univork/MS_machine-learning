@@ -1,6 +1,5 @@
 """This module contains base scraper class for real estate data collection scrapers"""
 
-import logging
 import abc
 from enum import Enum
 import luigi  # type: ignore
@@ -42,5 +41,5 @@ class Scraper(luigi.Task, abc.ABC):
 
     def run(self) -> None:
         result = self.execute()
-        df = pd.DataFrame(result)
+        df = pd.DataFrame([model.model_dump() for model in result])
         df.to_csv(self.output().path, index=False)

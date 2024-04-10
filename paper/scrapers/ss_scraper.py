@@ -1,15 +1,16 @@
-
 """This module contains scraper for https://home.ss.ge"""
 
 import logging
+from typing import Optional
 import requests # type: ignore
-import pandas as pd
 
+from scrapers.property_details import PropertyDetails
 from scrapers.scraper import Scraper, Website
 
 logger = logging.getLogger(__name__)
 
 URL = "https://api-gateway.ss.ge/v1/RealEstate/LegendSearch"
+DETAIL_URL = "https://api-gateway.ss.ge/v1/RealEstate/details?applicationId={appid}&updateViewCount=true"
 HEADERS = {
     "Origin": "https://home.ss.ge",
     "Referer": "https://home.ss.ge/",
@@ -32,70 +33,81 @@ class SSScraper(Scraper):
         self.update_token()
     
     def get_approximate_listings(self) -> int:
-        response = self.post_with_token("https://api-gateway.ss.ge/v2/RealEstate/LegendSearchCount", payload)
+        response = self.request_with_token("https://api-gateway.ss.ge/v2/RealEstate/LegendSearchCount", "POST", payload)
         return response.json()["count"]
 
     def update_token(self) -> None:
         response = requests.get("https://home.ss.ge/ka/udzravi-qoneba/l/bina/iyideba?currencyId=1&page=1")
         self.token = response.cookies["ss-session-token"]
 
-    def post_with_token(self, url, payload) -> requests.Response:
-        response = requests.post(url, headers={**HEADERS, "Authorization": f"Bearer {self.token}"}, json=payload)
+    def request_with_token(self, url, method: str, payload) -> Optional[requests.Response]:
+        response = requests.request(method=method, url=url, headers={**HEADERS, "Authorization": f"Bearer {self.token}"}, json=payload)
         if response.status_code == 401:
             self.update_token()
-            response = requests.post(URL, headers={**HEADERS, "Authorization": f"Bearer {self.token}"})
+            response = requests.request(method=method, url=url, headers={**HEADERS, "Authorization": f"Bearer {self.token}"}, json=payload)
         else:
-            response.raise_for_status()
-
+            try:
+                response.raise_for_status()
+            except:
+                return None
         return response
 
-    def scrape_single_page(self, page: int):
-        response = self.post_with_token(URL, payload={**payload, "page": page})
-        
-        properties = []
-        parsed_response = response.json()
-        for prop in parsed_response["realStateItemModel"]:
-            title = prop["title"]
-            address = prop["address"]
-            price = prop["price"]
-            total_area = prop["totalArea"]
-            building_floors = prop["totalAmountOfFloor"]
-            floor = prop["floorNumber"]
-            bedrooms = prop["numberOfBedrooms"]
+    def scrape_single_page(self, page: int) -> list[str]:
+        response = self.request_with_token(URL, "POST", payload={**payload, "page": page})
+        if response is None:
+            return []
 
-            prop_norm = {
-                "title": title,
-                "address": address,
-                "price": price,
-                "total_area": total_area,
-                "total_floors": building_floors,
-                "floor": floor,
-                "bedrooms": bedrooms
+        links = [DETAIL_URL.format(appid=item["applicationId"]) for item in response.json()["realStateItemModel"] if item["applicationId"] != 0]
+        return links
 
-            }
-            properties.append(prop_norm)
-        return properties
-
-
-    def execute(self) -> list[dict]:
+    def get_property_detail_links(self) -> list[dict]:
         approximate_pages = self.get_approximate_listings() / 30
         scraping = True
         page = 1
-        properites = []
-        while page<5:
+        links = []
+        while scraping:
             page_properties = self.scrape_single_page(page)
             if len(page_properties) > 0:
-                properites.extend(page_properties)
-                self.report_progress(f"Scraped: {page} of {approximate_pages}", int(100 * page / approximate_pages))
+                links.extend(page_properties)
+                message = f"Step 1/2, collecting property links\nScraped: {page} of {int(approximate_pages)}"
+                logger.info(message)
+                self.report_progress(
+                    message,
+                    int(100 * page / approximate_pages)
+                )
                 page += 1
             else:
                 scraping = False
-                print(f"No more properties on page {page}.")
-                print("DONE!")
-        return properites
+                logger.info(f"No more properties on page {page}.")
+        return links
+    
+    def get_property_details(self, url) -> PropertyDetails:
+        response = self.request_with_token(url, "PUT", payload)
+        if response is None:
+            return None
+
+        serialized_prop = PropertyDetails(**response.json())
+        return serialized_prop
+
+    def execute(self) -> list[PropertyDetails]:
+        logger.info("SS scraper started!")
+        links = self.get_property_detail_links()
+        properties = []
+        logger.info("Step 2/2...")
+        for i, link in enumerate(links):
+            prop = self.get_property_details(link)
+            if prop is not None:
+                properties.append(prop)
+            else:
+                logger.info("Failed request on %s", link)
+            message = f"Collecting property details\nScraped: {i+1} of {len(links)}"
+            logger.info(message)
+            self.report_progress(
+                "Step 2/2\n" + message,
+                int(100 * i+1 / len(links))
+            )
+        return properties
     
 
 if __name__ == "__main__":
     SSScraper().run()
-    # df = pd.DataFrame(properies)
-    # df.to_csv("./real_estate.csv", index=False)
