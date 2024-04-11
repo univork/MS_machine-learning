@@ -45,8 +45,8 @@ class PropertyDetails(BaseModel):
     water: bool
     wifi: bool
     pool: bool
-    area: float 
-    rooms: int
+    area: Optional[str] = None
+    rooms: Optional[str] = None
     bedrooms: int 
     toilet: Optional[str] = None
     floor: Optional[str] = None

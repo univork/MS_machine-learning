@@ -5,6 +5,8 @@ from enum import Enum
 import luigi  # type: ignore
 import pandas as pd
 
+from scrapers.property_details import PropertyDetails
+
 
 DIRECTORY = "data"
 
@@ -25,7 +27,7 @@ class Scraper(luigi.Task, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def execute(self) -> list[dict]:
+    def execute(self) -> list[PropertyDetails]:
         """Execute the scraper"""
         raise NotImplementedError
 
