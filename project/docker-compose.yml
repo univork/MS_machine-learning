@@ -1,0 +1,32 @@
+version: '3.1'
+
+services:
+  db:
+    image: mysql
+    container_name: db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - db:/var/lib/mysql
+
+  phpmyadmin:
+      image: phpmyadmin
+      container_name: phpmyadmin
+      restart: always
+      ports:
+        - 8080:80
+      environment:
+        - PMA_ARBITRARY=1
+  
+  notebook:
+    build: .
+    image: notebooker
+    container_name: notebook
+    volumes:
+      - ".:/home/jovyan/work"
+    ports:
+      - "8888:8888"
+
+volumes:
+  db:
