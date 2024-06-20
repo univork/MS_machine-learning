@@ -1,0 +1,23 @@
+setup: requirements.txt
+	pip install -r requirements.txt
+
+build-scraper: Dockerfile
+	docker build --target scraper-build -t scraper .
+
+run-scraper-dev: Dockerfile
+	docker run -it \
+	--mount "type=bind,src=${CURDIR}\scraper,target=/scraper" \
+	--mount "type=bind,src=${CURDIR}\data,target=/data" scraper bash
+
+run-scraper: Dockerfile
+	docker run --mount "type=bind,src=${CURDIR}\data,target=/data" scraper
+
+build-app: Dockerfile
+	docker build --target app-build -t emotion-detector-app .
+
+run-app: Dockerfile
+	docker run -p 8000:8000 emotion-detector-app
+
+publish-app:
+	docker tag emotion-detector-app cinepixel/emotion-detector-app
+	docker push cinepixel/emotion-detector-app
